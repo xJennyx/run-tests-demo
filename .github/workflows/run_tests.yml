@@ -9,8 +9,8 @@ on:
         default: second_test
         type: choice
         options:
-        - first_test
-        - second_test
+          - first_test
+          - second_test
 
 jobs:
   test:
@@ -19,21 +19,33 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      - name: setup Python
+
+      - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.13'
+          python-version: '3.11'
+
       - name: Install Chrome
-        run: sudo apt-get install google-chrome-stable
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget gnupg unzip
+          wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+          sudo sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list'
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
+
       - name: Install dependencies
         run: pip install -r requirements.txt
-      - name: first_test
-        if: "github.event.inputs.deployment_target == 'first_test'"
+
+      - name: Run first_test
+        if: ${{ github.event.inputs.deployment_target == 'first_test' }}
         run: pytest tests/test_button.py::test_button_exist --alluredir=allure-results
-      - name: second_test
-        if: "github.event.inputs.deployment_target == 'second_test'"
+
+      - name: Run second_test
+        if: ${{ github.event.inputs.deployment_target == 'second_test' }}
         run: pytest tests/test_button.py::test_button_exist_2 --alluredir=allure-results
-      - name: Store allure results
+
+      - name: Upload allure results
         uses: actions/upload-artifact@v4
         with:
           name: allure-results
@@ -44,19 +56,33 @@ jobs:
     runs-on: ubuntu-latest
     needs: test
     name: Generate report
+
     steps:
-      - uses: actions/setup-java@v4
+      - name: Setup Java
+        uses: actions/setup-java@v4
         with:
           distribution: 'microsoft'
           java-version: '21'
-      - run: sudo wget https://github.com/allure-framework/allure2/releases/download/2.33.0/allure-2.33.0.tgz && sudo tar -zxvf allure-2.33.0.tgz -c /opt/ && sudo ln -s /opt/allure-2.33.0/bin/allure /usr/bin/allure
-      - name: Download all workflow run artifacts
+
+      - name: Install Allure CLI
+        run: |
+          wget https://github.com/allure-framework/allure2/releases/download/2.33.0/allure-2.33.0.tgz
+          sudo tar -zxvf allure-2.33.0.tgz -C /opt/
+          sudo ln -s /opt/allure-2.33.0/bin/allure /usr/bin/allure
+
+      - name: Download Allure Results
         uses: actions/download-artifact@v4
-      - run: allure generate -c allure-results -o _site
-      - name: Store generated report
+        with:
+          name: allure-results
+          path: allure-results
+
+      - name: Generate Allure Report
+        run: allure generate allure-results -o _site --clean
+
+      - name: Upload generated report
         uses: actions/upload-artifact@v4
         with:
-          name: _site
+          name: allure-report
           path: _site
           retention-days: 1
 
@@ -64,11 +90,18 @@ jobs:
     runs-on: ubuntu-latest
     needs: generate-report
     name: Report publication
+
     steps:
-      - name: Download all workflow run artifacts
+      - name: Download report artifact
         uses: actions/download-artifact@v4
+        with:
+          name: allure-report
+          path: _site
+
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
       - name: Deploy to GitHub Pages
-        id: deployment
         uses: actions/deploy-pages@v1.2.9
