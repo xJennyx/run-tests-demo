@@ -33,7 +33,7 @@ jobs:
           "https://api.github.com/repos/xJennyx/run-tests-demo/actions/artifacts?name=allure-results"
           | python -c "import sys, json; print(json.load(sys.stdin)['artifacts'][0]['id']);") 
           && 
-          curl -L \
+          curl -L
           -H "Accept: application/vnd.github+json"
           -H "Authorization: Bearer ${{ secrets.TOKEN }}"
           -H "X-GitHub-Api-Version: 2022-11-28"
@@ -54,12 +54,10 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-
       - name: Install Chrome
         run: |
           sudo apt-get update
@@ -68,7 +66,6 @@ jobs:
           sudo sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list'
           sudo apt-get update
           sudo apt-get install -y google-chrome-stable
-
       - name: Install dependencies
         run: pip install -r requirements.txt
       - name: Download all workflow run artifacts
@@ -76,11 +73,9 @@ jobs:
       - name: Run first_test
         if: ${{ github.event.inputs.deployment_target == 'first_test' }}
         run: pytest tests/test_button.py::test_button_exist --alluredir=allure-results
-
       - name: Run second_test
         if: ${{ github.event.inputs.deployment_target == 'second_test' }}
         run: pytest tests/test_button.py::test_button_exist_2 --alluredir=allure-results
-
       - name: Upload allure results
         uses: actions/upload-artifact@v4
         with:
