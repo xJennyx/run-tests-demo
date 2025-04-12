@@ -96,7 +96,7 @@ jobs:
             echo "⚠️ pages.zip not found, skipping unzip"
             mkdir -p old_pages
           fi
-      - run: cp pages_history/history/* allure-results && cp pages_history/history allure-results
+      - run: cp pages_history/history/* allure-results && cp -r pages_history/history allure-results
 
       - name: Upload history for next job
         uses: actions/upload-artifact@v4
