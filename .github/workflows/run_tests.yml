@@ -51,7 +51,29 @@ jobs:
             -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
             "https://api.github.com/repos/xJennyx/run-tests-demo/actions/artifacts/$ARTIFACT_ID/zip" \
-            -o artifacts.zip
+            -o artifacts.zip &&
+          echo "Getting report ID..."
+          REPORT_INFO=$(curl -s -L \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/xJennyx/run-tests-demo/actions/artifacts")
+
+          REPORT_ID=$(echo "$REPORT_INFO" | python3 -c "import sys, json; artifacts=json.load(sys.stdin).get('artifacts', []); print(next((a['id'] for a in artifacts if a['name'] == 'github-pages'), ''))")
+
+          if [ -z "$REPORT_ID" ]; then
+            echo "❌ No previous 'github-pages' artifact found. Skipping download."
+            touch skip.txt  # просто чтобы был какой-то файл
+            exit 0
+          fi
+
+          echo "📦 Downloading artifact with ID $REPORT_ID..."
+          curl -s -L \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/xJennyx/run-tests-demo/actions/artifacts/$ARTIFACT_ID/zip" \
+            -o pages.zip
 
       - name: Extract history
         run: |
@@ -63,6 +85,18 @@ jobs:
             echo "⚠️ artifacts.zip not found, skipping unzip"
             mkdir -p allure-results
           fi
+          
+      - name: Extract github pages
+        run: |
+          if [ -f pages.zip ]; then
+            echo "📂 Unzipping..."
+            mkdir -p old_pages
+            unzip -q pages.zip -d old_pages || echo "⚠️ Nothing to unzip" && tar -xvf old_pages/artifact.tar -C pages_history
+          else
+            echo "⚠️ pages.zip not found, skipping unzip"
+            mkdir -p old_pages
+          fi
+      - run: cp pages_history/history/* allure-results && cp pages_history/history allure-results
 
       - name: Upload history for next job
         uses: actions/upload-artifact@v4
