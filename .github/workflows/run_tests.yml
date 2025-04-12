@@ -11,6 +11,7 @@ on:
         options:
           - first_test
           - second_test
+          - all
 
 permissions:
   contents: read
@@ -134,6 +135,9 @@ jobs:
       - name: Run second_test
         if: ${{ github.event.inputs.deployment_target == 'second_test' }}
         run: pytest tests/test_button.py::test_button_exist_2 --alluredir=allure-results
+      - name: Run all
+        if: ${{ github.event.inputs.deployment_target == 'all' }}
+        run: pytest --alluredir=allure-results
       - name: Upload allure results
         uses: actions/upload-artifact@v4
         with:
