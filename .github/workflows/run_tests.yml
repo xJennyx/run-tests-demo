@@ -90,7 +90,7 @@ jobs:
         run: |
           if [ -f pages.zip ]; then
             echo "📂 Unzipping..."
-            mkdir -p old_pages
+            mkdir -p old_pages pages_history
             unzip -q pages.zip -d old_pages || echo "⚠️ Nothing to unzip" && tar -xvf old_pages/artifact.tar -C pages_history
           else
             echo "⚠️ pages.zip not found, skipping unzip"
